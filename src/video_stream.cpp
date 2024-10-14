@@ -143,7 +143,7 @@ virtual void do_capture() {
             if (latest_config.loop_videofile)
             {
                 cap->open(video_stream_provider);
-                cap->set(cv::CAP_PROP_POS_FRAMES, latest_config.start_frame);
+                //cap->set(cv::CAP_PROP_POS_FRAMES, latest_config.start_frame);
                 frame_counter = 0;
                 NODELET_DEBUG("Reached end of frames, looping.");
             }
@@ -235,7 +235,41 @@ virtual void subscribe() {
   try {
     int device_num = std::stoi(video_stream_provider);
     NODELET_INFO_STREAM("Opening VideoCapture with provider: /dev/video" << device_num);
-    cap->open(device_num);
+    //this is good, but we also want to be able to read mpeg
+
+// the opencv interface is pretty damn old, like 2004, so a bunch of stuff doesnt really work, i mean, ofc it works, but it doesn't let me setup mjpeg compression input, which v4l has, or at least I don't know how to do it. 
+//
+// idk how to adapt this so that dynamic reconfigure still works either. the laziest solution is what I did, but something slightly better would be to close the stream and open it again with newer options .
+//
+//this does work in my pc at least
+	//std::string cameraPipeline;
+
+//gst-launch-1.0 -v v4l2src device=/dev/video4 extra-controls="c,exposure_auto=3" ! image/jpeg,framerate=60/1
+//	,width=640, height=480  ! avdec_mjpeg ! videoconvert ! autovideosink
+	
+
+	//cameraPipeline ="v4l2src device=/dev/video4 extra-controls=\"c,exposure_auto=0,exposure_absolute=1000\" ! ";
+	std::stringstream cameraPipelineSS;
+		cameraPipelineSS << "v4l2src device=/dev/video4 extra-controls=\"c"
+		<< ",exposure_auto="			<< latest_config.auto_exposure
+		<< ",brightness="			<< latest_config.brightness
+		<< ",constrast="			<< latest_config.contrast
+		<< ",saturation="			<< latest_config.saturation
+		<< ",sharpness="			<< latest_config.sharpness
+		<< ",white_balance_temperature="	<< latest_config.white_balance_temperature
+		<< ",auto_exposure="			<< latest_config.auto_exposure
+		<< ",white_balance_temperature_auto="	<< latest_config.white_balance_temperature_auto
+		<< "\" ! ";
+	//for some reason it doesn't work faster than 60hz
+	cameraPipelineSS <<"image/jpeg, framerate=" << latest_config.fps <<"/1, width=(int)" << latest_config.width <<",height=(int)" << latest_config.height <<" ! ";
+	//cameraPipeline+="image/jpeg, framerate=60/1, width=(int)1920,height=(int)1080 ! ";
+	cameraPipelineSS <<"avdec_mjpeg ! videoconvert ! appsink";
+
+	ROS_WARN_STREAM(cameraPipelineSS.str());
+
+
+    cap->open(cameraPipelineSS.str());
+    //cap->open(device_num, cv::CAP_OPENCV_MJPEG );
   } catch (std::invalid_argument &ex) {
     NODELET_INFO_STREAM("Opening VideoCapture with provider: " << video_stream_provider);
     cap->open(video_stream_provider);
@@ -260,7 +294,7 @@ virtual void subscribe() {
             latest_config.start_frame = 0;
           }
 
-        cap->set(cv::CAP_PROP_POS_FRAMES, latest_config.start_frame);
+        //cap->set(cv::CAP_PROP_POS_FRAMES, latest_config.start_frame);
       }
     if (!cap->isOpened()) {
       NODELET_FATAL_STREAM("Invalid 'video_stream_provider': " << video_stream_provider);
@@ -278,27 +312,27 @@ virtual void subscribe() {
   else
     NODELET_INFO_STREAM("Backend can't provide camera FPS information");
 
-  cap->set(cv::CAP_PROP_FPS, latest_config.set_camera_fps);
+  //cap->set(cv::CAP_PROP_FPS, latest_config.set_camera_fps);
   if(!cap->isOpened()){
     NODELET_ERROR_STREAM("Could not open the stream.");
     return;
   }
   if (latest_config.width != 0 && latest_config.height != 0){
-    cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
-    cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
+    //cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
+    //cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
   }
 
-  cap->set(cv::CAP_PROP_BRIGHTNESS, latest_config.brightness);
-  cap->set(cv::CAP_PROP_CONTRAST, latest_config.contrast);
-  cap->set(cv::CAP_PROP_HUE, latest_config.hue);
-  cap->set(cv::CAP_PROP_SATURATION, latest_config.saturation);
+  //cap->set(cv::CAP_PROP_BRIGHTNESS, latest_config.brightness);
+  //cap->set(cv::CAP_PROP_CONTRAST, latest_config.contrast);
+  //cap->set(cv::CAP_PROP_HUE, latest_config.hue);
+  //cap->set(cv::CAP_PROP_SATURATION, latest_config.saturation);
 
   if (latest_config.auto_exposure) {
-    cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
-    latest_config.exposure = 0.5;
+    //cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
+    latest_config.exposure_absolute = 250;
   } else {
-    cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
-    cap->set(cv::CAP_PROP_EXPOSURE, latest_config.exposure);
+    //cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
+    //cap->set(cv::CAP_PROP_EXPOSURE, latest_config.exposure);
   }
 
   try {
