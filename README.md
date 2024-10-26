@@ -1,3 +1,23 @@
+#### THINGS I WANT TO CHANGE
+
+I WANT TO MAKE THIS PACKAGE INTO A VIDEO_STREAM_GST
+
+like, it will read from gstreamer directly, not opencv
+
+the overall structure of this with the nodelets is really cool, so i want to keep it
+
+but to have different cameras, the parameters are going to be different and the reconfigure requests are not going to work
+one idea is to parse automatically v4l-ctl -d /dev/videoXX --all output, but that sounds like a pain. maybe it would be better to read from a library output automatically, but that also sounds like a pain
+
+an easier way of solving this is having a service from each camera that you ask for the caps, so moving the reconfigure job to the camera package and reading that as like a string.
+
+actually all options seem like a huge pain, so this is in the backlog.
+
+
+
+
+
+
 # video_stream_opencv  ![](https://travis-ci.com/ros-drivers/video_stream_opencv.svg?branch=master)
 
 A package to view video streams based on the [OpenCV VideoCapture module](http://docs.opencv.org/modules/highgui/doc/reading_and_writing_images_and_video.html#videocapture), easy way to publish on a ROS Image topic (including camera info) usb cams, ethernet cameras, video streams or video files. It also supports flipping of images and fps throttling.

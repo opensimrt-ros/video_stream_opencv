@@ -220,6 +220,55 @@ virtual void do_publish(const ros::TimerEvent& event) {
     }
 }
 
+//sudo apt install v4l-utils
+//
+//v4l2-ctl -d /dev/video0 --all
+std::stringstream get_pipeline_default(VideoStreamConfig& latest_config , int device_num)
+{
+//gst-launch-1.0 -v v4l2src device=/dev/video0 ! videoconvert ! autovideosink
+	std::stringstream cameraPipelineSS;
+		cameraPipelineSS << "v4l2src device=/dev/video" << device_num
+		<< " extra-controls=\"c"
+		<< ",brightness="			<< latest_config.brightness
+		<< ",constrast="			<< latest_config.contrast
+		<< ",saturation="			<< latest_config.saturation
+		<< ",sharpness="			<< latest_config.sharpness
+		<< ",auto_exposure="			<< latest_config.auto_exposure
+		<< ",white_balance_automatic="	<< latest_config.white_balance_temperature_auto
+		<< "\" ! ";
+	cameraPipelineSS <<"videoconvert ! appsink";
+	return cameraPipelineSS;
+
+}
+
+std::stringstream get_pipeline_brio(VideoStreamConfig& latest_config , int device_num)
+{
+//gst-launch-1.0 -v v4l2src device=/dev/video4 extra-controls="c,exposure_auto=3" ! image/jpeg,framerate=60/1
+//	,width=640, height=480  ! avdec_mjpeg ! videoconvert ! autovideosink
+	
+
+	//cameraPipeline ="v4l2src device=/dev/video4 extra-controls=\"c,exposure_auto=0,exposure_absolute=1000\" ! ";
+
+	std::stringstream cameraPipelineSS;
+		cameraPipelineSS << "v4l2src device=/dev/video" << device_num
+		<< " extra-controls=\"c"
+		<< ",exposure_auto="			<< latest_config.auto_exposure
+		<< ",brightness="			<< latest_config.brightness
+		<< ",constrast="			<< latest_config.contrast
+		<< ",saturation="			<< latest_config.saturation
+		<< ",sharpness="			<< latest_config.sharpness
+		<< ",white_balance_temperature="	<< latest_config.white_balance_temperature
+		<< ",auto_exposure="			<< latest_config.auto_exposure
+		<< ",white_balance_temperature_auto="	<< latest_config.white_balance_temperature_auto
+		<< "\" ! ";
+	//for some reason it doesn't work faster than 60hz
+	cameraPipelineSS <<"image/jpeg, framerate=" << latest_config.fps <<"/1, width=(int)" << latest_config.width <<",height=(int)" << latest_config.height <<" ! ";
+	//cameraPipeline+="image/jpeg, framerate=60/1, width=(int)1920,height=(int)1080 ! ";
+	cameraPipelineSS <<"avdec_mjpeg ! ";
+	cameraPipelineSS <<"videoconvert ! appsink";
+	return cameraPipelineSS;
+}
+
 virtual void subscribe() {
   ROS_DEBUG("Subscribe");
   VideoStreamConfig& latest_config = config;
@@ -244,27 +293,8 @@ virtual void subscribe() {
 //this does work in my pc at least
 	//std::string cameraPipeline;
 
-//gst-launch-1.0 -v v4l2src device=/dev/video4 extra-controls="c,exposure_auto=3" ! image/jpeg,framerate=60/1
-//	,width=640, height=480  ! avdec_mjpeg ! videoconvert ! autovideosink
-	
-
-	//cameraPipeline ="v4l2src device=/dev/video4 extra-controls=\"c,exposure_auto=0,exposure_absolute=1000\" ! ";
-	std::stringstream cameraPipelineSS;
-		cameraPipelineSS << "v4l2src device=/dev/video4 extra-controls=\"c"
-		<< ",exposure_auto="			<< latest_config.auto_exposure
-		<< ",brightness="			<< latest_config.brightness
-		<< ",constrast="			<< latest_config.contrast
-		<< ",saturation="			<< latest_config.saturation
-		<< ",sharpness="			<< latest_config.sharpness
-		<< ",white_balance_temperature="	<< latest_config.white_balance_temperature
-		<< ",auto_exposure="			<< latest_config.auto_exposure
-		<< ",white_balance_temperature_auto="	<< latest_config.white_balance_temperature_auto
-		<< "\" ! ";
-	//for some reason it doesn't work faster than 60hz
-	cameraPipelineSS <<"image/jpeg, framerate=" << latest_config.fps <<"/1, width=(int)" << latest_config.width <<",height=(int)" << latest_config.height <<" ! ";
-	//cameraPipeline+="image/jpeg, framerate=60/1, width=(int)1920,height=(int)1080 ! ";
-	cameraPipelineSS <<"avdec_mjpeg ! videoconvert ! appsink";
-
+	//std::stringstream cameraPipelineSS = get_pipeline_default(latest_config, device_num);
+	std::stringstream cameraPipelineSS = get_pipeline_brio(latest_config, device_num);
 	ROS_WARN_STREAM(cameraPipelineSS.str());
 
 
